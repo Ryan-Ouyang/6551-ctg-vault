@@ -181,4 +181,10 @@ contract ERC6551CTGVaultTest is Test {
 
         ERC6551CTGVault(payable(willTba)).batchWithdraw();
     }
+
+    // MAKE SURE NO ONE CAN DEPOSIT AFTER CTG VOTING STARTS
+    function testFail_DepositAfterVotingStarts() public {
+        vm.warp(1713398400);
+        prepareWithdrawal();
+    }
 }

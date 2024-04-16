@@ -57,6 +57,7 @@ contract ERC6551CTGVault is
 
     address public constant CTG_TOKEN_CONTRACT =
         0x87f7266fA4e9da89E3710882bD0E10954fa1D48D;
+    uint256 public constant CTG_VOTING_START_TIMESTAMP = 1713398400;
     uint8 public constant STAKERS_SHARE_PERCENTAGE = 50;
 
     EnumerableMap.UintToAddressMap private tokenIdToOriginalOwnerMap;
@@ -76,7 +77,7 @@ contract ERC6551CTGVault is
         require(operation == 0, "Only call operations are supported");
 
         // Prevent Will from transferring CTG tokens out of the account
-        require(to != CTG_TOKEN_CONTRACT, "Invalid target contract");
+        require(to != CTG_TOKEN_CONTRACT, "Cannot call CTG token contract");
 
         // Prevent transfers of ETH out of the account
         require(value == 0, "Invalid value");
@@ -159,14 +160,19 @@ contract ERC6551CTGVault is
         uint256 tokenId,
         bytes memory
     ) public virtual override returns (bytes4) {
-        require(msg.sender == CTG_TOKEN_CONTRACT, "Invalid token contract");
         require(
             IERC721(msg.sender).ownerOf(tokenId) == address(this),
             "Invalid token owner"
         );
 
-        // Record original owner of token sent in
-        tokenIdToOriginalOwnerMap.set(tokenId, from);
+        // Record original owner of token sent in if CTG contract
+        if (msg.sender == CTG_TOKEN_CONTRACT) {
+            require(
+                block.timestamp < CTG_VOTING_START_TIMESTAMP,
+                "Deposits have been closed since voting started"
+            );
+            tokenIdToOriginalOwnerMap.set(tokenId, from);
+        }
 
         return this.onERC721Received.selector;
     }
@@ -225,9 +231,5 @@ contract ERC6551CTGVault is
 
         // Transfer a portion of the balance to the original owner
         address(originalOwner).call{value: amountPerStaker}("");
-    }
-
-    function getMapLength() public view returns (uint256) {
-        return tokenIdToOriginalOwnerMap.length();
     }
 }
