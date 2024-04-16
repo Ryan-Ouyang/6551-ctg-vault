@@ -232,4 +232,28 @@ contract ERC6551CTGVault is
         // Transfer a portion of the balance to the original owner
         address(originalOwner).call{value: amountPerStaker}("");
     }
+
+    function getStakedTokenIds(
+        address staker
+    ) public view returns (uint256[] memory) {
+        uint256 totalStakedTokens = tokenIdToOriginalOwnerMap.length();
+        uint256[] memory stakedTokenIds = new uint256[](totalStakedTokens);
+
+        uint256 count = 0;
+        for (uint256 i = 0; i < totalStakedTokens; i++) {
+            (uint256 tokenId, address owner) = tokenIdToOriginalOwnerMap.at(i);
+            if (owner == staker) {
+                stakedTokenIds[count] = tokenId;
+                count++;
+            }
+        }
+
+        // Resize the array to fit only the staked tokens
+        uint256[] memory fittedStakedTokenIds = new uint256[](count);
+        for (uint256 j = 0; j < count; j++) {
+            fittedStakedTokenIds[j] = stakedTokenIds[j];
+        }
+
+        return fittedStakedTokenIds;
+    }
 }
