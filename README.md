@@ -1,66 +1,14 @@
-## Foundry
+## 6551-CTG-VAULT
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+An ERC-6551-compatible smart contract account to help Will Hunter win CTG Season 02.
 
-Foundry consists of:
+Jury token owners can send their tokens to the token-bound account of Will's CTG Player token to grant him more votes in the finale. If Will wins, the original Jury token owners will recieve their proportionate amount of the pot (relative to how many tokens they sent).
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+No matter what, Jury token owners can withdraw their tokens after the game is over.
 
-## Documentation
+Created by:
 
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- Ryan Ouyang (@RyanOuyang\_)
+- Jayden Windle (@jayden_windle)
+- Luc van Kampen (@LucemansNL)
+- Will Hunter (@wlhunter25)
