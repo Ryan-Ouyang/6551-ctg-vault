@@ -66,12 +66,11 @@ contract ERC6551CTGVaultTest is Test {
         vm.prank(juryOwner1);
         tokenContract.safeTransferFrom(juryOwner1, willTba, 2);
 
-        vm.prank(juryOwner2);
+        vm.startPrank(juryOwner2);
         tokenContract.safeTransferFrom(juryOwner2, willTba, 3);
-        vm.prank(juryOwner2);
         tokenContract.safeTransferFrom(juryOwner2, willTba, 4);
-        vm.prank(juryOwner2);
         tokenContract.safeTransferFrom(juryOwner2, willTba, 5);
+        vm.stopPrank();
     }
 
     // HAPPY PATH WITHDRAWAL TESTS
@@ -80,6 +79,7 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.deal(willTba, 80 ether);
 
+        vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(will);
         ERC6551CTGVault(payable(willTba)).enableWithdrawals();
 
@@ -100,6 +100,7 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.deal(willTba, 80 ether);
 
+        vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(will);
         ERC6551CTGVault(payable(willTba)).enableWithdrawals();
 
@@ -120,6 +121,7 @@ contract ERC6551CTGVaultTest is Test {
     function test_NoBalanceBatchWithdraw() public {
         prepareWithdrawal();
 
+        vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(will);
         ERC6551CTGVault(payable(willTba)).enableWithdrawals();
 
@@ -141,6 +143,7 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.deal(willTba, 80 ether);
 
+        vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(will);
         ERC6551CTGVault(payable(willTba)).execute(will, 1 ether, "", 0);
     }
@@ -148,6 +151,7 @@ contract ERC6551CTGVaultTest is Test {
     function testFail_TransferCTGTokens() public {
         prepareWithdrawal();
 
+        vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(will);
         ERC6551CTGVault(payable(willTba)).enableWithdrawals();
 
@@ -171,6 +175,7 @@ contract ERC6551CTGVaultTest is Test {
     function testFail_NonWillEnableWithdrawals() public {
         prepareWithdrawal();
 
+        vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(juryOwner1);
         ERC6551CTGVault(payable(willTba)).enableWithdrawals();
     }
@@ -179,12 +184,13 @@ contract ERC6551CTGVaultTest is Test {
     function testFail_BatchWithdrawBeforeEnabled() public {
         prepareWithdrawal();
 
+        vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         ERC6551CTGVault(payable(willTba)).batchWithdraw();
     }
 
     // MAKE SURE NO ONE CAN DEPOSIT AFTER CTG VOTING STARTS
     function testFail_DepositAfterVotingStarts() public {
-        vm.warp(1713398400);
+        vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         prepareWithdrawal();
     }
 }
