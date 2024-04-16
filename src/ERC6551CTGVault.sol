@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
+import "erc6551/src/interfaces/IERC6551Registry.sol";
+
 interface IERC6551Account {
     receive() external payable;
 
@@ -33,7 +35,7 @@ interface IERC6551Executable {
     ) external payable returns (bytes memory);
 }
 
-contract ERC6551Account is
+contract ERC6551CTGVault is
     IERC165,
     IERC1271,
     IERC6551Account,
@@ -43,6 +45,15 @@ contract ERC6551Account is
     using EnumerableMap for EnumerableMap.UintToAddressMap;
 
     uint256 public state;
+
+    // ERC6551 constants
+    address public constant registry =
+        0x000000006551c19487814612e58FE06813775758;
+    address public constant proxy = 0x55266d75D1a14E4572138116aF39863Ed6596E7F;
+
+    // V3 account implementation
+    address public constant implementation =
+        0x41C8f39463A868d3A88af00cd0fe7102F30E44eC;
 
     address public constant CTG_TOKEN_CONTRACT =
         0x87f7266fA4e9da89E3710882bD0E10954fa1D48D;
@@ -183,10 +194,12 @@ contract ERC6551Account is
         // Check if withdrawals are enabled
         require(isWithdrawalEnabled, "Withdrawals are not enabled");
 
+        uint256[] memory tokenIds = tokenIdToOriginalOwnerMap.keys();
+        uint256 stakedTokenCount = tokenIds.length;
+
         // Transfer all CTG tokens out of the account
-        for (uint256 i = 0; i < tokenIdToOriginalOwnerMap.length(); i++) {
-            (uint256 tokenId, address originalOwner) = tokenIdToOriginalOwnerMap
-                .at(i);
+        for (uint256 i = 0; i < stakedTokenCount; i++) {
+            uint256 tokenId = tokenIds[i];
 
             _withdraw(tokenId);
         }
@@ -213,6 +226,8 @@ contract ERC6551Account is
         // Transfer a portion of the balance to the original owner
         address(originalOwner).call{value: amountPerStaker}("");
     }
-}
 
-// you lost the game btw. ~ luc
+    function getMapLength() public view returns (uint256) {
+        return tokenIdToOriginalOwnerMap.length();
+    }
+}
