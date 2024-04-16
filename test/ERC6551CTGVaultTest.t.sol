@@ -13,6 +13,7 @@ contract ERC6551CTGVaultTest is Test {
 
     DummyToken public ctgTokenContract;
 
+    // Thank you Solady: https://github.com/Vectorized/solady/blob/9ea8a82b4485478b2ef5efdcc8012b10c2b7d865/src/accounts/LibERC6551.sol#L26
     /// @dev The canonical ERC6551 registry address for EVM chains.
     address internal constant REGISTRY =
         0x000000006551c19487814612e58FE06813775758;
@@ -34,14 +35,18 @@ contract ERC6551CTGVaultTest is Test {
         );
     }
 
-    function test_BatchWithdraw() public {
-        address will = makeAddr("will");
-        address juryOwner1 = makeAddr("juryOwner1");
-        address juryOwner2 = makeAddr("juryOwner2");
+    address will;
+    address juryOwner1;
+    address juryOwner2;
+    address willTba;
+    DummyToken tokenContract;
 
-        DummyToken tokenContract = DummyToken(
-            erc6551CTGVault.CTG_TOKEN_CONTRACT()
-        );
+    function prepareWithdrawal() public {
+        will = makeAddr("will");
+        juryOwner1 = makeAddr("juryOwner1");
+        juryOwner2 = makeAddr("juryOwner2");
+
+        tokenContract = DummyToken(erc6551CTGVault.CTG_TOKEN_CONTRACT());
 
         tokenContract.mint(will, 1); // Will's token
         tokenContract.mint(juryOwner1, 2); // Jury token #1
@@ -49,7 +54,7 @@ contract ERC6551CTGVaultTest is Test {
         tokenContract.mint(juryOwner2, 4); // Jury token #3
         tokenContract.mint(juryOwner2, 5); // Jury token #4
 
-        address willTba = IERC6551Registry(REGISTRY).createAccount(
+        willTba = IERC6551Registry(REGISTRY).createAccount(
             address(erc6551CTGVault),
             0,
             block.chainid,
@@ -67,6 +72,11 @@ contract ERC6551CTGVaultTest is Test {
         tokenContract.safeTransferFrom(juryOwner2, willTba, 4);
         vm.prank(juryOwner2);
         tokenContract.safeTransferFrom(juryOwner2, willTba, 5);
+    }
+
+    // HAPPY PATH WITHDRAWAL TESTS
+    function test_BatchWithdraw() public {
+        prepareWithdrawal();
 
         vm.deal(willTba, 80 ether);
 
@@ -79,41 +89,14 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.assertEq(juryOwner1.balance, 10 ether);
         vm.assertEq(juryOwner2.balance, 30 ether);
+        vm.assertEq(tokenContract.ownerOf(2), juryOwner1);
+        vm.assertEq(tokenContract.ownerOf(3), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(4), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(5), juryOwner2);
     }
 
     function test_IndividualWithdraw() public {
-        address will = makeAddr("will");
-        address juryOwner1 = makeAddr("juryOwner1");
-        address juryOwner2 = makeAddr("juryOwner2");
-
-        DummyToken tokenContract = DummyToken(
-            erc6551CTGVault.CTG_TOKEN_CONTRACT()
-        );
-
-        tokenContract.mint(will, 1); // Will's token
-        tokenContract.mint(juryOwner1, 2); // Jury token #1
-        tokenContract.mint(juryOwner2, 3); // Jury token #2
-        tokenContract.mint(juryOwner2, 4); // Jury token #3
-        tokenContract.mint(juryOwner2, 5); // Jury token #4
-
-        address willTba = IERC6551Registry(REGISTRY).createAccount(
-            address(erc6551CTGVault),
-            0,
-            block.chainid,
-            address(tokenContract),
-            1
-        );
-
-        // Move jury tokens to will's vault account
-        vm.prank(juryOwner1);
-        tokenContract.safeTransferFrom(juryOwner1, willTba, 2);
-
-        vm.prank(juryOwner2);
-        tokenContract.safeTransferFrom(juryOwner2, willTba, 3);
-        vm.prank(juryOwner2);
-        tokenContract.safeTransferFrom(juryOwner2, willTba, 4);
-        vm.prank(juryOwner2);
-        tokenContract.safeTransferFrom(juryOwner2, willTba, 5);
+        prepareWithdrawal();
 
         vm.deal(willTba, 80 ether);
 
@@ -128,41 +111,33 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.assertEq(juryOwner1.balance, 10 ether);
         vm.assertEq(juryOwner2.balance, 30 ether);
+        vm.assertEq(tokenContract.ownerOf(2), juryOwner1);
+        vm.assertEq(tokenContract.ownerOf(3), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(4), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(5), juryOwner2);
     }
 
+    function test_NoBalanceBatchWithdraw() public {
+        prepareWithdrawal();
+
+        vm.prank(will);
+        ERC6551CTGVault(payable(willTba)).enableWithdrawals();
+
+        vm.assertEq(will.balance, 0 ether);
+
+        ERC6551CTGVault(payable(willTba)).batchWithdraw();
+
+        vm.assertEq(juryOwner1.balance, 0 ether);
+        vm.assertEq(juryOwner2.balance, 0 ether);
+        vm.assertEq(tokenContract.ownerOf(2), juryOwner1);
+        vm.assertEq(tokenContract.ownerOf(3), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(4), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(5), juryOwner2);
+    }
+
+    // TESTS TO VERIFY WILL CANT STEAL ASSETS
     function testFail_TransferEther() public {
-        address will = makeAddr("will");
-        address juryOwner1 = makeAddr("juryOwner1");
-        address juryOwner2 = makeAddr("juryOwner2");
-
-        DummyToken tokenContract = DummyToken(
-            erc6551CTGVault.CTG_TOKEN_CONTRACT()
-        );
-
-        tokenContract.mint(will, 1); // Will's token
-        tokenContract.mint(juryOwner1, 2); // Jury token #1
-        tokenContract.mint(juryOwner2, 3); // Jury token #2
-        tokenContract.mint(juryOwner2, 4); // Jury token #3
-        tokenContract.mint(juryOwner2, 5); // Jury token #4
-
-        address willTba = IERC6551Registry(REGISTRY).createAccount(
-            address(erc6551CTGVault),
-            0,
-            block.chainid,
-            address(tokenContract),
-            1
-        );
-
-        // Move jury tokens to will's vault account
-        vm.prank(juryOwner1);
-        tokenContract.safeTransferFrom(juryOwner1, willTba, 2);
-
-        vm.prank(juryOwner2);
-        tokenContract.safeTransferFrom(juryOwner2, willTba, 3);
-        vm.prank(juryOwner2);
-        tokenContract.safeTransferFrom(juryOwner2, willTba, 4);
-        vm.prank(juryOwner2);
-        tokenContract.safeTransferFrom(juryOwner2, willTba, 5);
+        prepareWithdrawal();
 
         vm.deal(willTba, 80 ether);
 
@@ -171,40 +146,7 @@ contract ERC6551CTGVaultTest is Test {
     }
 
     function testFail_TransferCTGTokens() public {
-        address will = makeAddr("will");
-        address juryOwner1 = makeAddr("juryOwner1");
-        address juryOwner2 = makeAddr("juryOwner2");
-
-        DummyToken tokenContract = DummyToken(
-            erc6551CTGVault.CTG_TOKEN_CONTRACT()
-        );
-
-        tokenContract.mint(will, 1); // Will's token
-        tokenContract.mint(juryOwner1, 2); // Jury token #1
-        tokenContract.mint(juryOwner2, 3); // Jury token #2
-        tokenContract.mint(juryOwner2, 4); // Jury token #3
-        tokenContract.mint(juryOwner2, 5); // Jury token #4
-
-        address willTba = IERC6551Registry(REGISTRY).createAccount(
-            address(erc6551CTGVault),
-            0,
-            block.chainid,
-            address(tokenContract),
-            1
-        );
-
-        // Move jury tokens to will's vault account
-        vm.prank(juryOwner1);
-        tokenContract.safeTransferFrom(juryOwner1, willTba, 2);
-
-        vm.prank(juryOwner2);
-        tokenContract.safeTransferFrom(juryOwner2, willTba, 3);
-        vm.prank(juryOwner2);
-        tokenContract.safeTransferFrom(juryOwner2, willTba, 4);
-        vm.prank(juryOwner2);
-        tokenContract.safeTransferFrom(juryOwner2, willTba, 5);
-
-        vm.deal(willTba, 80 ether);
+        prepareWithdrawal();
 
         vm.prank(will);
         ERC6551CTGVault(payable(willTba)).enableWithdrawals();
@@ -223,5 +165,20 @@ contract ERC6551CTGVaultTest is Test {
             ),
             0
         );
+    }
+
+    // TESTS TO MAKE SURE ONLY WILL CAN TOGGLE WITHDRAWALS
+    function testFail_NonWillEnableWithdrawals() public {
+        prepareWithdrawal();
+
+        vm.prank(juryOwner1);
+        ERC6551CTGVault(payable(willTba)).enableWithdrawals();
+    }
+
+    // TESTS TO MAKE SURE NO ONE CAN WITHDRAW BEFORE WITHDRAWALS ARE ENABLED
+    function testFail_BatchWithdrawBeforeEnabled() public {
+        prepareWithdrawal();
+
+        ERC6551CTGVault(payable(willTba)).batchWithdraw();
     }
 }
