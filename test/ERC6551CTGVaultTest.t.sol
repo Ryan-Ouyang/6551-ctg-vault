@@ -34,7 +34,7 @@ contract ERC6551CTGVaultTest is Test {
         );
     }
 
-    function testHappyPath() public {
+    function test_BatchWithdraw() public {
         address will = makeAddr("will");
         address juryOwner1 = makeAddr("juryOwner1");
         address juryOwner2 = makeAddr("juryOwner2");
@@ -75,18 +75,153 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.assertEq(will.balance, 40 ether);
 
-        console.log(
-            "map length",
-            ERC6551CTGVault(payable(willTba)).getMapLength()
-        );
-
         ERC6551CTGVault(payable(willTba)).batchWithdraw();
-
-        console.log("will balance", will.balance);
-        console.log("juryOwner1 balance", juryOwner1.balance);
-        console.log("juryOwner2 balance", juryOwner2.balance);
 
         vm.assertEq(juryOwner1.balance, 10 ether);
         vm.assertEq(juryOwner2.balance, 30 ether);
+    }
+
+    function test_IndividualWithdraw() public {
+        address will = makeAddr("will");
+        address juryOwner1 = makeAddr("juryOwner1");
+        address juryOwner2 = makeAddr("juryOwner2");
+
+        DummyToken tokenContract = DummyToken(
+            erc6551CTGVault.CTG_TOKEN_CONTRACT()
+        );
+
+        tokenContract.mint(will, 1); // Will's token
+        tokenContract.mint(juryOwner1, 2); // Jury token #1
+        tokenContract.mint(juryOwner2, 3); // Jury token #2
+        tokenContract.mint(juryOwner2, 4); // Jury token #3
+        tokenContract.mint(juryOwner2, 5); // Jury token #4
+
+        address willTba = IERC6551Registry(REGISTRY).createAccount(
+            address(erc6551CTGVault),
+            0,
+            block.chainid,
+            address(tokenContract),
+            1
+        );
+
+        // Move jury tokens to will's vault account
+        vm.prank(juryOwner1);
+        tokenContract.safeTransferFrom(juryOwner1, willTba, 2);
+
+        vm.prank(juryOwner2);
+        tokenContract.safeTransferFrom(juryOwner2, willTba, 3);
+        vm.prank(juryOwner2);
+        tokenContract.safeTransferFrom(juryOwner2, willTba, 4);
+        vm.prank(juryOwner2);
+        tokenContract.safeTransferFrom(juryOwner2, willTba, 5);
+
+        vm.deal(willTba, 80 ether);
+
+        vm.prank(will);
+        ERC6551CTGVault(payable(willTba)).enableWithdrawals();
+
+        vm.assertEq(will.balance, 40 ether);
+
+        for (uint256 i = 2; i <= 5; i++) {
+            ERC6551CTGVault(payable(willTba)).withdraw(i);
+        }
+
+        vm.assertEq(juryOwner1.balance, 10 ether);
+        vm.assertEq(juryOwner2.balance, 30 ether);
+    }
+
+    function testFail_TransferEther() public {
+        address will = makeAddr("will");
+        address juryOwner1 = makeAddr("juryOwner1");
+        address juryOwner2 = makeAddr("juryOwner2");
+
+        DummyToken tokenContract = DummyToken(
+            erc6551CTGVault.CTG_TOKEN_CONTRACT()
+        );
+
+        tokenContract.mint(will, 1); // Will's token
+        tokenContract.mint(juryOwner1, 2); // Jury token #1
+        tokenContract.mint(juryOwner2, 3); // Jury token #2
+        tokenContract.mint(juryOwner2, 4); // Jury token #3
+        tokenContract.mint(juryOwner2, 5); // Jury token #4
+
+        address willTba = IERC6551Registry(REGISTRY).createAccount(
+            address(erc6551CTGVault),
+            0,
+            block.chainid,
+            address(tokenContract),
+            1
+        );
+
+        // Move jury tokens to will's vault account
+        vm.prank(juryOwner1);
+        tokenContract.safeTransferFrom(juryOwner1, willTba, 2);
+
+        vm.prank(juryOwner2);
+        tokenContract.safeTransferFrom(juryOwner2, willTba, 3);
+        vm.prank(juryOwner2);
+        tokenContract.safeTransferFrom(juryOwner2, willTba, 4);
+        vm.prank(juryOwner2);
+        tokenContract.safeTransferFrom(juryOwner2, willTba, 5);
+
+        vm.deal(willTba, 80 ether);
+
+        vm.prank(will);
+        ERC6551CTGVault(payable(willTba)).execute(will, 1 ether, "", 0);
+    }
+
+    function testFail_TransferCTGTokens() public {
+        address will = makeAddr("will");
+        address juryOwner1 = makeAddr("juryOwner1");
+        address juryOwner2 = makeAddr("juryOwner2");
+
+        DummyToken tokenContract = DummyToken(
+            erc6551CTGVault.CTG_TOKEN_CONTRACT()
+        );
+
+        tokenContract.mint(will, 1); // Will's token
+        tokenContract.mint(juryOwner1, 2); // Jury token #1
+        tokenContract.mint(juryOwner2, 3); // Jury token #2
+        tokenContract.mint(juryOwner2, 4); // Jury token #3
+        tokenContract.mint(juryOwner2, 5); // Jury token #4
+
+        address willTba = IERC6551Registry(REGISTRY).createAccount(
+            address(erc6551CTGVault),
+            0,
+            block.chainid,
+            address(tokenContract),
+            1
+        );
+
+        // Move jury tokens to will's vault account
+        vm.prank(juryOwner1);
+        tokenContract.safeTransferFrom(juryOwner1, willTba, 2);
+
+        vm.prank(juryOwner2);
+        tokenContract.safeTransferFrom(juryOwner2, willTba, 3);
+        vm.prank(juryOwner2);
+        tokenContract.safeTransferFrom(juryOwner2, willTba, 4);
+        vm.prank(juryOwner2);
+        tokenContract.safeTransferFrom(juryOwner2, willTba, 5);
+
+        vm.deal(willTba, 80 ether);
+
+        vm.prank(will);
+        ERC6551CTGVault(payable(willTba)).enableWithdrawals();
+
+        vm.assertEq(will.balance, 40 ether);
+
+        vm.prank(will);
+        ERC6551CTGVault(payable(willTba)).execute(
+            address(tokenContract),
+            0,
+            abi.encodeWithSignature(
+                "safeTransferFrom(address,address,uint256)",
+                juryOwner1,
+                willTba,
+                2
+            ),
+            0
+        );
     }
 }
