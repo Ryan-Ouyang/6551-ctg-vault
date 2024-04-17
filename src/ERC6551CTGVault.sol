@@ -18,22 +18,18 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
     error EnableWithdrawalsFailed();
     error WithdrawalFailed();
 
-    // ERC6551 constants
-    address public constant registry = 0x000000006551c19487814612e58FE06813775758;
-    address public constant proxy = 0x55266d75D1a14E4572138116aF39863Ed6596E7F;
-
-    // V3 account implementation
-    address public constant implementation = 0x41C8f39463A868d3A88af00cd0fe7102F30E44eC;
-
-    address public constant CTG_TOKEN_CONTRACT = 0x87f7266fA4e9da89E3710882bD0E10954fa1D48D;
+    // CTG contracts
+    address public constant CTG_TOKEN_CONTRACT = 0x4DfC7EA5aC59B63223930C134796fecC4258d093;
     uint256 public constant CTG_VOTING_START_TIMESTAMP = 1713398400;
+    uint256 public constant WITHDRAWAL_ENABLED_TIMESTAMP = 1715918400; // 1 month after voting
+
     uint8 public constant STAKERS_SHARE_PERCENTAGE = 50;
 
     EnumerableMap.UintToAddressMap private tokenIdToOriginalOwnerMap;
 
     address public selfOwnershipAccount;
     uint256 public amountPerStaker;
-    bool public isWithdrawalEnabled;
+    bool public isEarlyWithdrawalEnabled;
 
     function execute(address to, uint256 value, bytes calldata data, uint8 operation)
         external
@@ -100,16 +96,27 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
         return IERC721(tokenContract).ownerOf(tokenId);
     }
 
-    function enableWithdrawals() public {
+    function isWithdrawalEnabled() public view returns (bool) {
+        return isEarlyWithdrawalEnabled || block.timestamp >= WITHDRAWAL_ENABLED_TIMESTAMP;
+    }
+
+    function enableEarlyWithdrawals() public {
         // onlyOwner
         require(_isValidSigner(msg.sender), "Invalid signer");
-
+        require(!isEarlyWithdrawalEnabled, "Early withdrawals already enabled");
         // enable Withdrawals
-        isWithdrawalEnabled = true;
+        isEarlyWithdrawalEnabled = true;
 
         // calculate amountPerStaker
-        amountPerStaker =
-            ((address(this).balance * STAKERS_SHARE_PERCENTAGE) / 100) / tokenIdToOriginalOwnerMap.length();
+        uint256 numRemainingStakers = tokenIdToOriginalOwnerMap.length();
+
+        // Avoid division by zero if Will calls this function after all stakers have unstaked
+        if (numRemainingStakers == 0) {
+            amountPerStaker = 0;
+        } else {
+            amountPerStaker =
+                ((address(this).balance * STAKERS_SHARE_PERCENTAGE) / 100) / tokenIdToOriginalOwnerMap.length();
+        }
 
         uint256 amountOfOwner = ((address(this).balance * (100 - STAKERS_SHARE_PERCENTAGE)) / 100);
 
@@ -128,7 +135,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
 
     function batchWithdraw() public {
         // Check if withdrawals are enabled
-        require(isWithdrawalEnabled, "Withdrawals are not enabled");
+        require(isWithdrawalEnabled(), "Withdrawals are not enabled");
 
         uint256[] memory tokenIds = tokenIdToOriginalOwnerMap.keys();
         uint256 stakedTokenCount = tokenIds.length;
@@ -143,7 +150,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
 
     function withdraw(uint256 tokenId) public {
         // Check if withdrawals are enabled
-        require(isWithdrawalEnabled, "Withdrawals are not enabled");
+        require(isWithdrawalEnabled(), "Withdrawals are not enabled");
 
         _withdraw(tokenId);
     }
@@ -166,8 +173,8 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
 
         uint256 count = 0;
         for (uint256 i = 0; i < totalStakedTokens; i++) {
-            (uint256 tokenId, address owner) = tokenIdToOriginalOwnerMap.at(i);
-            if (owner == staker) {
+            (uint256 tokenId, address originalOwner) = tokenIdToOriginalOwnerMap.at(i);
+            if (originalOwner == staker) {
                 stakedTokenIds[count] = tokenId;
                 count++;
             }
