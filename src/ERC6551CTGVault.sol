@@ -25,15 +25,18 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
     // V3 account implementation
     address public constant implementation = 0x41C8f39463A868d3A88af00cd0fe7102F30E44eC;
 
+    // CTG contracts
     address public constant CTG_TOKEN_CONTRACT = 0x87f7266fA4e9da89E3710882bD0E10954fa1D48D;
     uint256 public constant CTG_VOTING_START_TIMESTAMP = 1713398400;
+    uint256 public constant WITHDRAWAL_ENABLED_TIMESTAMP = 1715918400; // 1 month after voting
+
     uint8 public constant STAKERS_SHARE_PERCENTAGE = 50;
 
     EnumerableMap.UintToAddressMap private tokenIdToOriginalOwnerMap;
 
     address public selfOwnershipAccount;
     uint256 public amountPerStaker;
-    bool public isWithdrawalEnabled;
+    bool public isEarlyWithdrawalEnabled;
 
     function execute(address to, uint256 value, bytes calldata data, uint8 operation)
         external
@@ -100,12 +103,16 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
         return IERC721(tokenContract).ownerOf(tokenId);
     }
 
-    function enableWithdrawals() public {
+    function isWithdrawalEnabled() public view returns (bool) {
+        return isEarlyWithdrawalEnabled || block.timestamp >= WITHDRAWAL_ENABLED_TIMESTAMP;
+    }
+
+    function enableEarlyWithdrawals() public {
         // onlyOwner
         require(_isValidSigner(msg.sender), "Invalid signer");
 
         // enable Withdrawals
-        isWithdrawalEnabled = true;
+        isEarlyWithdrawalEnabled = true;
 
         // calculate amountPerStaker
         amountPerStaker =
@@ -128,7 +135,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
 
     function batchWithdraw() public {
         // Check if withdrawals are enabled
-        require(isWithdrawalEnabled, "Withdrawals are not enabled");
+        require(isWithdrawalEnabled(), "Withdrawals are not enabled");
 
         uint256[] memory tokenIds = tokenIdToOriginalOwnerMap.keys();
         uint256 stakedTokenCount = tokenIds.length;
@@ -143,7 +150,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
 
     function withdraw(uint256 tokenId) public {
         // Check if withdrawals are enabled
-        require(isWithdrawalEnabled, "Withdrawals are not enabled");
+        require(isWithdrawalEnabled(), "Withdrawals are not enabled");
 
         _withdraw(tokenId);
     }
