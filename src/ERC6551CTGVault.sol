@@ -18,15 +18,8 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
     error EnableWithdrawalsFailed();
     error WithdrawalFailed();
 
-    // ERC6551 constants
-    address public constant registry = 0x000000006551c19487814612e58FE06813775758;
-    address public constant proxy = 0x55266d75D1a14E4572138116aF39863Ed6596E7F;
-
-    // V3 account implementation
-    address public constant implementation = 0x41C8f39463A868d3A88af00cd0fe7102F30E44eC;
-
     // CTG contracts
-    address public constant CTG_TOKEN_CONTRACT = 0x87f7266fA4e9da89E3710882bD0E10954fa1D48D;
+    address public constant CTG_TOKEN_CONTRACT = 0x4DfC7EA5aC59B63223930C134796fecC4258d093;
     uint256 public constant CTG_VOTING_START_TIMESTAMP = 1713398400;
     uint256 public constant WITHDRAWAL_ENABLED_TIMESTAMP = 1715918400; // 1 month after voting
 
@@ -110,7 +103,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
     function enableEarlyWithdrawals() public {
         // onlyOwner
         require(_isValidSigner(msg.sender), "Invalid signer");
-
+        require(!isEarlyWithdrawalEnabled, "Early withdrawals already enabled");
         // enable Withdrawals
         isEarlyWithdrawalEnabled = true;
 
