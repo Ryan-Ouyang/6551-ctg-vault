@@ -79,7 +79,7 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(will);
-        ERC6551CTGVault(payable(willTba)).enableWithdrawals();
+        ERC6551CTGVault(payable(willTba)).enableEarlyWithdrawals();
 
         vm.assertEq(will.balance, 40 ether);
 
@@ -100,7 +100,7 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(will);
-        ERC6551CTGVault(payable(willTba)).enableWithdrawals();
+        ERC6551CTGVault(payable(willTba)).enableEarlyWithdrawals();
 
         vm.assertEq(will.balance, 40 ether);
 
@@ -122,7 +122,7 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(will);
-        ERC6551CTGVault(payable(willTba)).enableWithdrawals();
+        ERC6551CTGVault(payable(willTba)).enableEarlyWithdrawals();
 
         vm.assertEq(will.balance, 0 ether);
 
@@ -153,7 +153,7 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(will);
-        ERC6551CTGVault(payable(willTba)).enableWithdrawals();
+        ERC6551CTGVault(payable(willTba)).enableEarlyWithdrawals();
 
         vm.assertEq(will.balance, 40 ether);
 
@@ -167,12 +167,12 @@ contract ERC6551CTGVaultTest is Test {
     }
 
     // TESTS TO MAKE SURE ONLY WILL CAN TOGGLE WITHDRAWALS
-    function testFail_NonWillEnableWithdrawals() public {
+    function testFail_NonWillEnableEarlyWithdrawals() public {
         prepareWithdrawal();
 
         vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         vm.prank(juryOwner1);
-        ERC6551CTGVault(payable(willTba)).enableWithdrawals();
+        ERC6551CTGVault(payable(willTba)).enableEarlyWithdrawals();
     }
 
     // TESTS TO MAKE SURE NO ONE CAN WITHDRAW BEFORE WITHDRAWALS ARE ENABLED
@@ -187,5 +187,39 @@ contract ERC6551CTGVaultTest is Test {
     function testFail_DepositAfterVotingStarts() public {
         vm.warp(erc6551CTGVault.CTG_VOTING_START_TIMESTAMP());
         prepareWithdrawal();
+    }
+
+    // MAKE SURE PEOPLE CAN WITHDRAW AFTER THE WITHDRAWAL ENABLE TIMESTAMP
+    function test_BatchWithdrawAfterEnabled() public {
+        prepareWithdrawal();
+
+        vm.warp(erc6551CTGVault.WITHDRAWAL_ENABLED_TIMESTAMP() + 1);
+
+        ERC6551CTGVault(payable(willTba)).batchWithdraw();
+
+        vm.assertEq(tokenContract.ownerOf(2), juryOwner1);
+        vm.assertEq(tokenContract.ownerOf(3), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(4), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(5), juryOwner2);
+    }
+
+    function test_IndividualWithdrawAfterEnabled() public {
+        prepareWithdrawal();
+
+        vm.warp(erc6551CTGVault.WITHDRAWAL_ENABLED_TIMESTAMP() + 1);
+
+        for (uint256 i = 2; i <= 5; i++) {
+            ERC6551CTGVault(payable(willTba)).withdraw(i);
+        }
+
+        vm.assertEq(tokenContract.ownerOf(2), juryOwner1);
+        vm.assertEq(tokenContract.ownerOf(3), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(4), juryOwner2);
+        vm.assertEq(tokenContract.ownerOf(5), juryOwner2);
+
+        vm.prank(will);
+        ERC6551CTGVault(payable(willTba)).enableEarlyWithdrawals();
+
+        vm.assertEq(tokenContract.ownerOf(1), will);
     }
 }

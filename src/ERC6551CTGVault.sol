@@ -115,8 +115,15 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
         isEarlyWithdrawalEnabled = true;
 
         // calculate amountPerStaker
-        amountPerStaker =
-            ((address(this).balance * STAKERS_SHARE_PERCENTAGE) / 100) / tokenIdToOriginalOwnerMap.length();
+        uint256 numRemainingStakers = tokenIdToOriginalOwnerMap.length();
+
+        // Avoid division by zero if Will calls this function after all stakers have unstaked
+        if (numRemainingStakers == 0) {
+            amountPerStaker = 0;
+        } else {
+            amountPerStaker =
+                ((address(this).balance * STAKERS_SHARE_PERCENTAGE) / 100) / tokenIdToOriginalOwnerMap.length();
+        }
 
         uint256 amountOfOwner = ((address(this).balance * (100 - STAKERS_SHARE_PERCENTAGE)) / 100);
 
