@@ -1,3 +1,7 @@
+# Win With Will
+
+Vote now: [ctg.vote](https://ctg.vote)
+
 ## 6551-CTG-VAULT
 
 An ERC-6551-compatible smart contract account to help Will Hunter win CTG Season 02.
@@ -8,7 +12,7 @@ No matter what, Jury token owners can withdraw their tokens after the game is ov
 
 Created by:
 
-- Ryan Ouyang (@RyanOuyang\_)
-- Jayden Windle (@jayden_windle)
-- Luc van Kampen (@LucemansNL)
-- Will Hunter (@wlhunter25)
+- Ryan Ouyang ([@RyanOuyang\_](https://twitter.com/RyanOuyang_))
+- Jayden Windle ([@jayden_windle](https://twitter.com/jayden_windle))
+- Luc van Kampen ([@LucemansNL](https://twitter.com/LucemansNL))
+- Will Hunter ([@wlhunter25](https://twitter.com/wlhunter25))
