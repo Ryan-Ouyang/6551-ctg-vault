@@ -180,8 +180,8 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
 
         uint256 count = 0;
         for (uint256 i = 0; i < totalStakedTokens; i++) {
-            (uint256 tokenId, address owner) = tokenIdToOriginalOwnerMap.at(i);
-            if (owner == staker) {
+            (uint256 tokenId, address originalOwner) = tokenIdToOriginalOwnerMap.at(i);
+            if (originalOwner == staker) {
                 stakedTokenIds[count] = tokenId;
                 count++;
             }
