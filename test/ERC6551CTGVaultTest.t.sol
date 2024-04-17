@@ -15,8 +15,7 @@ contract ERC6551CTGVaultTest is Test {
 
     // Thank you Solady: https://github.com/Vectorized/solady/blob/9ea8a82b4485478b2ef5efdcc8012b10c2b7d865/src/accounts/LibERC6551.sol#L26
     /// @dev The canonical ERC6551 registry address for EVM chains.
-    address internal constant REGISTRY =
-        0x000000006551c19487814612e58FE06813775758;
+    address internal constant REGISTRY = 0x000000006551c19487814612e58FE06813775758;
 
     /// @dev The canonical ERC6551 registry bytecode for EVM chains.
     /// Useful for forge tests:
@@ -29,10 +28,7 @@ contract ERC6551CTGVaultTest is Test {
         ctgTokenContract = new DummyToken("CTG Token", "CTG");
         erc6551CTGVault = new ERC6551CTGVault();
 
-        vm.etch(
-            erc6551CTGVault.CTG_TOKEN_CONTRACT(),
-            address(ctgTokenContract).code
-        );
+        vm.etch(erc6551CTGVault.CTG_TOKEN_CONTRACT(), address(ctgTokenContract).code);
     }
 
     address will;
@@ -55,12 +51,14 @@ contract ERC6551CTGVaultTest is Test {
         tokenContract.mint(juryOwner2, 5); // Jury token #4
 
         willTba = IERC6551Registry(REGISTRY).createAccount(
-            address(erc6551CTGVault),
-            0,
-            block.chainid,
-            address(tokenContract),
-            1
+            address(erc6551CTGVault), 0, block.chainid, address(tokenContract), 1
         );
+
+        // move will's token to it's own account
+        vm.prank(will);
+        tokenContract.safeTransferFrom(will, willTba, 1);
+
+        assertEq(tokenContract.ownerOf(1), willTba);
 
         // Move jury tokens to will's vault account
         vm.prank(juryOwner1);
@@ -112,6 +110,7 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.assertEq(juryOwner1.balance, 10 ether);
         vm.assertEq(juryOwner2.balance, 30 ether);
+        vm.assertEq(tokenContract.ownerOf(1), will);
         vm.assertEq(tokenContract.ownerOf(2), juryOwner1);
         vm.assertEq(tokenContract.ownerOf(3), juryOwner2);
         vm.assertEq(tokenContract.ownerOf(4), juryOwner2);
@@ -131,6 +130,7 @@ contract ERC6551CTGVaultTest is Test {
 
         vm.assertEq(juryOwner1.balance, 0 ether);
         vm.assertEq(juryOwner2.balance, 0 ether);
+        vm.assertEq(tokenContract.ownerOf(1), will);
         vm.assertEq(tokenContract.ownerOf(2), juryOwner1);
         vm.assertEq(tokenContract.ownerOf(3), juryOwner2);
         vm.assertEq(tokenContract.ownerOf(4), juryOwner2);
@@ -161,12 +161,7 @@ contract ERC6551CTGVaultTest is Test {
         ERC6551CTGVault(payable(willTba)).execute(
             address(tokenContract),
             0,
-            abi.encodeWithSignature(
-                "safeTransferFrom(address,address,uint256)",
-                juryOwner1,
-                willTba,
-                2
-            ),
+            abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", juryOwner1, willTba, 2),
             0
         );
     }
