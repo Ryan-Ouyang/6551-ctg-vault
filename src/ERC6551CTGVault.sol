@@ -73,7 +73,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
     {
         require(IERC721(msg.sender).ownerOf(tokenId) == address(this), "Invalid token owner");
 
-        (uint256 chainId, address tokenContract, uint256 accountTokenId) = ERC6551AccountLib.token();
+        (,, uint256 accountTokenId) = ERC6551AccountLib.token();
 
         // Record original owner of token sent in if CTG contract
         if (msg.sender == CTG_TOKEN_CONTRACT && accountTokenId != tokenId) {
@@ -82,7 +82,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
         }
 
         // Record sender of participant token (will's address)
-        if (chainId == block.chainid && msg.sender == tokenContract && tokenId == accountTokenId) {
+        if (msg.sender == CTG_TOKEN_CONTRACT && accountTokenId == tokenId) {
             selfOwnershipAccount = from;
         }
 
