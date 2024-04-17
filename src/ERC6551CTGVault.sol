@@ -24,7 +24,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
     address public constant CTG_TOKEN_CONTRACT = 0x4DfC7EA5aC59B63223930C134796fecC4258d093;
     uint256 public constant CTG_VOTING_START_TIMESTAMP = 1713398400;
     uint256 public constant WITHDRAWAL_ENABLED_TIMESTAMP = 1715918400; // 1 month after voting
-    uint256 public constant ACCOUNT_UNLOCK_TIMESTAMP = 1718596800; // 1 month after withdrawl opens
+    uint256 public constant ACCOUNT_UNLOCK_TIMESTAMP = 1718596800; // 1 month after withdrawal opens
 
     uint8 public constant STAKERS_SHARE_PERCENTAGE = 50;
 
