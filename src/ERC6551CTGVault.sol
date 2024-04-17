@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -17,11 +18,13 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
 
     error EnableWithdrawalsFailed();
     error WithdrawalFailed();
+    error AlreadyWithdrawn();
 
     // CTG contracts
     address public constant CTG_TOKEN_CONTRACT = 0x4DfC7EA5aC59B63223930C134796fecC4258d093;
     uint256 public constant CTG_VOTING_START_TIMESTAMP = 1713398400;
     uint256 public constant WITHDRAWAL_ENABLED_TIMESTAMP = 1715918400; // 1 month after voting
+    uint256 public constant ACCOUNT_UNLOCK_TIMESTAMP = 1718596800; // 1 month after withdrawl opens
 
     uint8 public constant STAKERS_SHARE_PERCENTAGE = 50;
 
@@ -41,15 +44,14 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
         require(_isValidSigner(msg.sender), "Invalid signer");
         require(operation == 0, "Only call operations are supported");
 
-        // Prevent Will from transferring CTG tokens out of the account
-        require(to != CTG_TOKEN_CONTRACT, "Cannot call CTG token contract");
+        // Impose restrictions on the account until after withdrawal period has expired
+        if (block.timestamp < ACCOUNT_UNLOCK_TIMESTAMP) {
+            // Prevent Will from transferring CTG tokens out of the account
+            require(to != CTG_TOKEN_CONTRACT, "Cannot call CTG token contract");
 
-        // Prevent Will from transferring his participant token out of the account
-        (, address accountTokenContract,) = token();
-        require(to != accountTokenContract, "Cannot call account token contract");
-
-        // Prevent transfers of ETH out of the account
-        require(value == 0, "Invalid value");
+            // Prevent transfers of ETH out of the account
+            require(value == 0, "Invalid value");
+        }
 
         ++state;
 
@@ -100,7 +102,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
         return isEarlyWithdrawalEnabled || block.timestamp >= WITHDRAWAL_ENABLED_TIMESTAMP;
     }
 
-    function enableEarlyWithdrawals() public {
+    function enableEarlyWithdrawals() external {
         // onlyOwner
         require(_isValidSigner(msg.sender), "Invalid signer");
         require(!isEarlyWithdrawalEnabled, "Early withdrawals already enabled");
@@ -122,10 +124,11 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
 
         // return participant token
         if (selfOwnershipAccount != address(0)) {
+            (,, uint256 accountTokenId) = token();
             address recipient = selfOwnershipAccount;
-            (, address accountTokenContract, uint256 tokenId) = token();
+
             selfOwnershipAccount = address(0);
-            IERC721(accountTokenContract).safeTransferFrom(address(this), recipient, tokenId);
+            IERC721(CTG_TOKEN_CONTRACT).transferFrom(address(this), recipient, accountTokenId);
         }
 
         // payout winner
@@ -133,7 +136,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
         if (!success) revert EnableWithdrawalsFailed();
     }
 
-    function batchWithdraw() public {
+    function batchWithdraw() external {
         // Check if withdrawals are enabled
         require(isWithdrawalEnabled(), "Withdrawals are not enabled");
 
@@ -148,7 +151,7 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
         }
     }
 
-    function withdraw(uint256 tokenId) public {
+    function withdraw(uint256 tokenId) external {
         // Check if withdrawals are enabled
         require(isWithdrawalEnabled(), "Withdrawals are not enabled");
 
@@ -158,7 +161,8 @@ contract ERC6551CTGVault is ERC721Holder, ERC6551Account {
     function _withdraw(uint256 tokenId) private {
         address originalOwner = tokenIdToOriginalOwnerMap.get(tokenId);
 
-        EnumerableMap.remove(tokenIdToOriginalOwnerMap, tokenId);
+        bool removed = EnumerableMap.remove(tokenIdToOriginalOwnerMap, tokenId);
+        if (!removed) revert AlreadyWithdrawn();
 
         IERC721(CTG_TOKEN_CONTRACT).transferFrom(address(this), originalOwner, tokenId);
 
